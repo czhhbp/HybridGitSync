@@ -59,4 +59,6 @@ MIT
 
 ---
 
-注意：本项目为对原插件 [wk-obsidian/HybridGitSync](https://github.com/wk-obsidian/HybridGitSync) 的修改与分支，保留并改进了部分功能与实现。
+---
+
+Note: This project is a fork and modification of the original plugin [wk-obsidian/HybridGitSync](https://github.com/wk-obsidian/HybridGitSync). It preserves and improves some features and implementations.
