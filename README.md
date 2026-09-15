@@ -59,6 +59,4 @@ MIT
 
 ---
 
----
-
 Note: This project is a fork and modification of the original plugin [wk-obsidian/HybridGitSync](https://github.com/wk-obsidian/HybridGitSync). It preserves and improves some features and implementations.
