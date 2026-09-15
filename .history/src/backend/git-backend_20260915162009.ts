@@ -114,7 +114,7 @@ export class GitBackend extends SyncBackend {
   async pull(): Promise<SyncResult> {
     try {
       this.log('pull: Pulling from remote...');
-      const output = await this.exec(['pull', '--no-rebase']);
+      const output = await this.exec('pull --no-rebase');
       const pulled = this.countChanges(output);
       this.log('pull: Success, pulled', pulled, 'files');
       return {
@@ -134,13 +134,13 @@ export class GitBackend extends SyncBackend {
 
   async push(): Promise<SyncResult> {
     try {
-      const branch = (await this.exec(['rev-parse', '--abbrev-ref', 'HEAD'])).trim();
+      const branch = (await this.exec('rev-parse --abbrev-ref HEAD')).trim();
       this.log('push: Current branch:', branch);
 
       // Check if upstream is already set
       let hasUpstream = false;
       try {
-        await this.exec(['rev-parse', '--abbrev-ref', `${branch}@{upstream}`]);
+        await this.exec(`rev-parse --abbrev-ref ${branch}@{upstream}`);
         hasUpstream = true;
       } catch {
         // No upstream set
@@ -148,9 +148,9 @@ export class GitBackend extends SyncBackend {
       this.log('push: Has upstream:', hasUpstream);
 
       // Use -u flag only if upstream is not set
-      const pushArgs = hasUpstream ? ['push'] : ['push', '-u', 'origin', branch];
-      this.log('push: Executing:', pushArgs.join(' '));
-      const output = await this.exec(pushArgs);
+      const pushCmd = hasUpstream ? 'push' : `push -u origin ${branch}`;
+      this.log('push: Executing:', pushCmd);
+      const output = await this.exec(pushCmd);
 
       const pushed = this.countChanges(output);
       this.log('push: Success, pushed', pushed, 'files');
@@ -197,18 +197,19 @@ export class GitBackend extends SyncBackend {
 
       // Step 1: Stage all changes
       this.log('sync: Staging all changes...');
-      await this.exec(['add', '-A']);
+      await this.exec('add -A');
 
       // Step 2: Check if there are changes to commit
-      const status = await this.exec(['status', '--porcelain']);
+      const status = await this.exec('status --porcelain');
       const changedFiles = status.trim().split('\n').filter(line => line.trim());
       this.log('sync: Changed files:', changedFiles.length);
 
       if (status.trim()) {
         const message = this.buildCommitMessage();
         // Escape double quotes in the message for shell safety
+        const safeMessage = message.replace(/"/g, '\\"');
         this.log('sync: Committing with message:', message);
-        await this.exec(['commit', '-m', message]);
+        await this.exec(`commit -m "${safeMessage}"`);
       } else {
         this.log('sync: No changes to commit');
       }
@@ -216,7 +217,7 @@ export class GitBackend extends SyncBackend {
       // Step 3: Try to pull with merge (skip if remote is empty or no upstream)
       this.log('sync: Pulling from remote...');
       try {
-        const pullOutput = await this.exec(['pull', '--no-rebase']);
+        const pullOutput = await this.exec('pull --no-rebase');
         this.log('sync: Pull result:', pullOutput.trim());
       } catch (pullError) {
         // Remote might be empty or no upstream set — that's OK for first push
@@ -252,7 +253,7 @@ export class GitBackend extends SyncBackend {
    */
   private async checkGitState(): Promise<{ ok: boolean; message: string }> {
     try {
-      const status = await this.exec(['status']);
+      const status = await this.exec('status');
 
       // Check for rebase in progress
       if (status.includes('rebase') || status.includes('REBASE')) {
@@ -291,13 +292,13 @@ export class GitBackend extends SyncBackend {
   async status(): Promise<SyncStatus> {
     try {
       // Get current branch
-      const branch = (await this.exec(['rev-parse', '--abbrev-ref', 'HEAD'])).trim();
+      const branch = (await this.exec('rev-parse --abbrev-ref HEAD')).trim();
       this.log('status: Current branch:', branch);
 
       // Get ahead/behind counts
       let ahead = 0, behind = 0;
       try {
-        const counts = await this.exec(['rev-list', '--left-right', '--count', 'HEAD...@{upstream}']);
+        const counts = await this.exec('rev-list --left-right --count HEAD...@{upstream}');
         const [a, b] = counts.trim().split('\t').map(Number);
         ahead = a || 0;
         behind = b || 0;
@@ -308,7 +309,7 @@ export class GitBackend extends SyncBackend {
       }
 
       // Get changed files
-      const statusOutput = await this.exec(['status', '--porcelain']);
+      const statusOutput = await this.exec('status --porcelain');
       const changedFiles = this.parseStatus(statusOutput);
       this.log('status: Changed files:', changedFiles.length);
 
@@ -341,18 +342,19 @@ export class GitBackend extends SyncBackend {
     // Nothing to dispose for native git
   }
 
-  async exec(args: string | string[]): Promise<string> {
+  async exec(args: string): Promise<string> {
     // SAFETY: This method is only called on desktop — the caller
     // (isGitAvailable in main.ts) checks Platform.isDesktop first.
     // child_process is listed in esbuild "external" so it is never
     // bundled; require() resolves it from Electron's Node.js runtime.
     // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- require() is safe here: only called on desktop, child_process is in esbuild external
-    const child = require('child_process') as typeof import('child_process');
+    const { exec } = require('child_process') as typeof import('child_process');
     return new Promise((resolve, reject) => {
       // Build environment with token for authentication
       const env = { ...process.env };
       if (this.token) {
         // Use GIT_ASKPASS to provide credentials non-interactively
+        // This tells git to use our token when it asks for credentials
         env.GIT_TERMINAL_PROMPT = '0'; // Disable interactive prompts
         env.GIT_ASKPASS = 'echo'; // Use echo as credential helper
         if (this.remoteUrl.includes('github.com')) {
@@ -360,27 +362,16 @@ export class GitBackend extends SyncBackend {
         }
       }
 
-      if (Array.isArray(args)) {
-        // Use execFile to avoid shell parsing issues and support paths with spaces
-        child.execFile(this.gitPath, args, { cwd: this.vaultPath, env }, (error: Error | null, stdout: string, stderr: string) => {
-          if (error) {
-            reject(new Error(`${error.message}\n${stderr}`));
-          } else {
-            resolve(stdout);
-          }
-        });
-      } else {
-        // Fallback: run as a shell command but quote the git path to allow spaces
-        const { exec } = child;
-        const cmd = `"${this.gitPath}" ${args}`;
-        exec(cmd, { cwd: this.vaultPath, env }, (error: Error | null, stdout: string, stderr: string) => {
-          if (error) {
-            reject(new Error(`${error.message}\n${stderr}`));
-          } else {
-            resolve(stdout);
-          }
-        });
-      }
+      exec(`${this.gitPath} ${args}`, {
+        cwd: this.vaultPath,
+        env,
+      }, (error: Error | null, stdout: string, stderr: string) => {
+        if (error) {
+          reject(new Error(`${error.message}\n${stderr}`));
+        } else {
+          resolve(stdout);
+        }
+      });
     });
   }
 

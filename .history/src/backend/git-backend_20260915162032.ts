@@ -341,18 +341,19 @@ export class GitBackend extends SyncBackend {
     // Nothing to dispose for native git
   }
 
-  async exec(args: string | string[]): Promise<string> {
+  async exec(args: string): Promise<string> {
     // SAFETY: This method is only called on desktop — the caller
     // (isGitAvailable in main.ts) checks Platform.isDesktop first.
     // child_process is listed in esbuild "external" so it is never
     // bundled; require() resolves it from Electron's Node.js runtime.
     // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call -- require() is safe here: only called on desktop, child_process is in esbuild external
-    const child = require('child_process') as typeof import('child_process');
+    const { exec } = require('child_process') as typeof import('child_process');
     return new Promise((resolve, reject) => {
       // Build environment with token for authentication
       const env = { ...process.env };
       if (this.token) {
         // Use GIT_ASKPASS to provide credentials non-interactively
+        // This tells git to use our token when it asks for credentials
         env.GIT_TERMINAL_PROMPT = '0'; // Disable interactive prompts
         env.GIT_ASKPASS = 'echo'; // Use echo as credential helper
         if (this.remoteUrl.includes('github.com')) {
@@ -360,27 +361,16 @@ export class GitBackend extends SyncBackend {
         }
       }
 
-      if (Array.isArray(args)) {
-        // Use execFile to avoid shell parsing issues and support paths with spaces
-        child.execFile(this.gitPath, args, { cwd: this.vaultPath, env }, (error: Error | null, stdout: string, stderr: string) => {
-          if (error) {
-            reject(new Error(`${error.message}\n${stderr}`));
-          } else {
-            resolve(stdout);
-          }
-        });
-      } else {
-        // Fallback: run as a shell command but quote the git path to allow spaces
-        const { exec } = child;
-        const cmd = `"${this.gitPath}" ${args}`;
-        exec(cmd, { cwd: this.vaultPath, env }, (error: Error | null, stdout: string, stderr: string) => {
-          if (error) {
-            reject(new Error(`${error.message}\n${stderr}`));
-          } else {
-            resolve(stdout);
-          }
-        });
-      }
+      exec(`${this.gitPath} ${args}`, {
+        cwd: this.vaultPath,
+        env,
+      }, (error: Error | null, stdout: string, stderr: string) => {
+        if (error) {
+          reject(new Error(`${error.message}\n${stderr}`));
+        } else {
+          resolve(stdout);
+        }
+      });
     });
   }
 
