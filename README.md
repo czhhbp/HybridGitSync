@@ -57,11 +57,6 @@ As this is a newly released plugin, your feedback is incredibly valuable! If you
 
 MIT
 
-## ☕ Support
-
-If you find this plugin useful and would like to support its development, you can support me on Ko-fi.
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/walkskyer)
 
 ---
 
