@@ -62,3 +62,7 @@ MIT
 If you find this plugin useful and would like to support its development, you can support me on Ko-fi.
 
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/walkskyer)
+
+---
+
+注意：本项目为对原插件 [wk-obsidian/HybridGitSync](https://github.com/wk-obsidian/HybridGitSync) 的修改与分支，保留并改进了部分功能与实现。
