@@ -1,6 +1,6 @@
 # Hybrid Git Sync
 
-[English](https://github.com/wk-obsidian/HybridGitSync/blob/main/README.md)｜[中文](https://github.com/wk-obsidian/HybridGitSync/blob/main/README_ZH.md)
+[English](https://github.com/czhhbp/HybridGitSync/blob/main/README.md)｜[中文](https://github.com/czhhbp/HybridGitSync/blob/main/README_ZH.md)
 
 
 > 🚀 **专为 Obsidian 打造的跨平台自适应 Git 同步解决方案。**  
