@@ -47,10 +47,9 @@ Setting up Hybrid Git Sync takes less than 3 minutes:
 
 ## 🤝 Feedback & Contributing
 
-As this is a newly released plugin, your feedback is incredibly valuable! If you encounter any bugs, have feature requests, or want to support the project:
+As this is a newly released plugin, your feedback is incredibly valuable! If you encounter any bugs or have feature requests:
 
-* Please open an **Issue** or join the discussion in the **Discussions** tab.
-* If this plugin helps streamline your cross-platform workflow, consider dropping a ⭐ **Star** to help others discover it!
+- Please open an **Issue** or join the discussion in the **Discussions** tab.
 
 
 ## License
